@@ -1,27 +1,17 @@
 import telebot
 from config import TOKEN
+import json
 
 bot = telebot.TeleBot(TOKEN)
 
-questions = [
-    {
-        "question": "Где бы вы предпочли жить?",
-        "options": ["В лесу", "На лугу", "В воде", "В горах"],
-        "scores": [1, 2, 3, 4]
-    },
-    {
-        "question": "Какую еду вы предпочитаете?",
-        "options": ["Фрукты", "Мясо", "Рыба", "Трава"],
-        "scores": [2, 4, 3, 1]
-    },
-    {
-        "question": "Как вы проводите свободное время?",
-        "options": ["Сплю", "Охочусь", "Плаваю", "Гуляю"],
-        "scores": [1, 4, 3, 2]
-    }
-]
-
 user_data = {}
+
+#load questions from json file
+def load_questions():
+    with open("questions.json", "r", encoding="utf-8") as f:
+        return json.load(f)
+
+questions = load_questions()
 
 # Hello message
 @bot.message_handler(commands=['start'])
