@@ -78,7 +78,19 @@ def send_about_info(message):
         "Спасибо за вашу поддержку! ❤️"
     )
 
-# bot start
+#feedback report
+@bot.message_handler(commands=['feedback'])
+def feedback_handler(message):
+    bot.send_message(message.chat.id, "Напишите ваш отзыв. Мы будем рады вашим предложениям!")
+    bot.register_next_step_handler(message, save_feedback)
+
+def save_feedback(message):
+    with open("feedback.txt", "a") as f:
+        f.write(f"От {message.chat.id}: {message.text}\n")
+    bot.reply_to(message, "Спасибо за ваш отзыв!")
+    
+
+#bot start
 if __name__ == '__main__':
     print("Бот запущен....")
     bot.infinity_polling()
