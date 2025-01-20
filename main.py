@@ -1,7 +1,7 @@
 import telebot
 from config import TOKEN
 import json
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -67,21 +67,66 @@ def send_result(chat_id):
 
     score = user_data[chat_id]["total_score"]
     if score <= 5:
-        result = "Ваше тотемное животное - Ежик! 🦔"
+        result = "Ваше тотемное животное - Ушастый ёж!"
+        image_path = "images/hedgehog.jpeg"
     elif score <= 8:
-        result = "Ваше тотемное животное - Лиса! 🦊"
+        result = "Ваше тотемное животное - Обыкновенная Лисица!"
+        image_path = "images/fox.jpg"
     else:
-        result = "Ваше тотемное животное - Медведь! 🐻"
+        result = "Ваше тотемное животное - Малайский Медведь!"
+        image_path = "images/bear.jpg"
+
+    with open(image_path, "rb") as photo:
+        bot.send_photo(chat_id, photo)
 
     show_result(chat_id, result)
 
 # Display result and offer retry
 def show_result(chat_id, result):
     bot.send_message(chat_id, result)
-    retry_markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    retry_markup.add("Попробовать ещё раз")
-    bot.send_message(chat_id, "Хотите попробовать ещё раз?", reply_markup=retry_markup)
 
+    share_markup = InlineKeyboardMarkup()
+
+#Telegram
+    telegram_button = InlineKeyboardButton(
+        text="Поделиться в Telegram",
+        url=f"https://t.me/share/url?url=https://t.me/{bot.get_me().username}&text={result}"
+    )
+    share_markup.add(telegram_button)
+
+#WhatsApp
+    whatsapp_button = InlineKeyboardButton(
+        text="Поделиться в WhatsApp",
+        url=f"https://api.whatsapp.com/send?text={result}%20https://t.me/{bot.get_me().username}"
+    )
+    share_markup.add(whatsapp_button)
+
+#Facebook
+    facebook_button = InlineKeyboardButton(
+        text="Поделиться в Facebook",
+        url=f"https://www.facebook.com/sharer/sharer.php?u=https://t.me/{bot.get_me().username}&quote={result}"
+    )
+    share_markup.add(facebook_button)
+
+#Twitter
+    twitter_button = InlineKeyboardButton(
+        text="Поделиться в Twitter",
+        url=f"https://twitter.com/intent/tweet?text={result}&url=https://t.me/{bot.get_me().username}"
+    )
+    share_markup.add(twitter_button)
+
+#Send message with buttons
+    bot.send_message(
+        chat_id,
+        "Хотите поделиться результатом с друзьями в социальных сетях?",
+        reply_markup=share_markup
+    )
+
+    retry_markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    retry_markup.add("Попробовать ещё раз", "Узнать о программе опеки")
+    bot.send_message(chat_id, "Хотите попробовать ещё раз или узнать о программе опеки?", reply_markup=retry_markup)
+
+#delete user data
     del user_data[chat_id]
 
 # Retry quiz
