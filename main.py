@@ -1,5 +1,5 @@
 import telebot
-from config import TOKEN
+from config import TOKEN, STAFF_CHAT_ID
 import json
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -38,6 +38,10 @@ def start_quiz(message):
 # Send a quiz question
 def send_question(chat_id):
     user_info = user_data.get(chat_id)
+    if not user_info or "current_question" not in user_info:
+        bot.send_message(chat_id, "Ошибка: невозможно продолжить викторину.")
+        return
+
     if user_info["current_question"] < len(questions):
         question = questions[user_info["current_question"]]
         markup = ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
@@ -47,18 +51,24 @@ def send_question(chat_id):
     else:
         send_result(chat_id)
 
+
 # Handle quiz answers
 @bot.message_handler(func=lambda message: message.chat.id in user_data)
 def handle_answer(message):
     user_info = user_data[message.chat.id]
-    question = questions[user_info["current_question"]]
-    if message.text in question["options"]:
-        index = question["options"].index(message.text)
-        user_info["total_score"] += question["scores"][index]
-        user_info["current_question"] += 1
-        send_question(message.chat.id)
+
+    if user_info["current_question"] < len(questions):
+        question = questions[user_info["current_question"]]
+        if message.text in question["options"]:
+            index = question["options"].index(message.text)
+            user_info["total_score"] += question["scores"][index]
+            user_info["current_question"] += 1
+            send_question(message.chat.id)
+        else:
+            bot.reply_to(message, "Пожалуйста, выберите один из предложенных вариантов.")
     else:
-        bot.reply_to(message, "Пожалуйста, выберите один из предложенных вариантов.")
+        send_result(message.chat.id)
+
 
 # Show quiz result
 def send_result(chat_id):
@@ -123,11 +133,11 @@ def show_result(chat_id, result):
     )
 
     retry_markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    retry_markup.add("Попробовать ещё раз", "Узнать о программе опеки")
-    bot.send_message(chat_id, "Хотите попробовать ещё раз или узнать о программе опеки?", reply_markup=retry_markup)
+    retry_markup.add("Попробовать ещё раз", "Узнать о программе опеки", "Связаться с сотрудником зоопарка")
+    bot.send_message(chat_id, "Что вы хотите сделать дальше?", reply_markup=retry_markup)
 
-#delete user data
-    del user_data[chat_id]
+# #delete user data
+#     del user_data[chat_id]
 
 # Retry quiz
 @bot.message_handler(func=lambda message: message.text == "Попробовать ещё раз")
@@ -147,6 +157,29 @@ def send_about_info(message):
         "Спасибо за вашу поддержку! ❤️"
     )
     bot.send_message(message.chat.id, about_text, parse_mode="Markdown")
+
+#Contact stuff
+@bot.message_handler(func=lambda message: message.text == "Связаться с сотрудником зоопарка")
+def contact_staff(message):
+    bot.send_message(
+        message.chat.id,
+        "Пожалуйста, напишите ваш вопрос или запрос, и мы передадим его сотруднику. "
+        "Не забудьте уточнить, с каким животным связан ваш вопрос!"
+    )
+    bot.register_next_step_handler(message, forward_to_staff)
+
+def forward_to_staff(message):
+    user_result = user_data.get(message.chat.id, {}).get("total_score", "Результат не найден")
+    result_text = f"Пользователь @{message.from_user.username or 'без имени'}:\n"
+    result_text += f"Результат викторины: {user_result}\n"
+    result_text += f"Сообщение: {message.text}"
+
+#Send message to staff
+    bot.send_message(STAFF_CHAT_ID, result_text)
+    bot.reply_to(message, "Ваш запрос был отправлен сотруднику. Спасибо!")
+    if message.chat.id in user_data:
+        del user_data[message.chat.id]
+
 
 # Collect user feedback
 @bot.message_handler(commands=['feedback'])
